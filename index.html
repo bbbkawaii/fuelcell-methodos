@@ -47,7 +47,10 @@
           </div>
           <div class="header-actions">
             <button class="button button-quiet" id="loadDemoButton" type="button">
-              加载演示数据
+              加载 Mock 数据
+            </button>
+            <button class="button button-quiet" id="downloadMockButton" type="button">
+              下载 Mock CSV
             </button>
             <label class="button button-primary" for="csvFile">
               导入 CSV
@@ -58,7 +61,7 @@
 
         <section class="notice-bar" aria-label="演示数据说明">
           <span class="notice-mark" aria-hidden="true">i</span>
-          <span>当前为合成演示数据，不含企业原始测试资料；导入 CSV 后会在本地浏览器中完成分析。</span>
+          <span>内置数据为合成 Mock 数据，不含企业原始测试资料；导入 CSV 后会在本地浏览器中完成分析。</span>
         </section>
 
         <section class="kpi-grid" aria-label="本次分析概况">
@@ -101,7 +104,7 @@
                 </span>
                 <div>
                   <strong id="sourceName">未选择数据文件</strong>
-                  <span id="sourceMeta">点击“加载演示数据”或导入一份 CSV</span>
+                  <span id="sourceMeta">点击“加载 Mock 数据”或导入一份 CSV</span>
                 </div>
               </div>
               <button class="text-button" id="rerunButton" type="button" disabled>重新运行分析</button>

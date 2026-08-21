@@ -27,6 +27,7 @@ const state = {
 
 const els = {
   loadDemoButton: document.querySelector('#loadDemoButton'),
+  downloadMockButton: document.querySelector('#downloadMockButton'),
   csvFile: document.querySelector('#csvFile'),
   rerunButton: document.querySelector('#rerunButton'),
   editMethodButton: document.querySelector('#editMethodButton'),
@@ -70,6 +71,7 @@ function initialize() {
   populateMethodForm();
 
   els.loadDemoButton.addEventListener('click', loadDemoData);
+  els.downloadMockButton.addEventListener('click', downloadMockCsv);
   els.csvFile.addEventListener('change', handleCsvImport);
   els.rerunButton.addEventListener('click', () => {
     runAndRender();
@@ -93,13 +95,44 @@ function loadDemoData() {
   state.rows = demo.rows;
   state.schema = demo.schema;
   state.source = {
-    name: 'FC-STACK-2026-0818-DEMO.csv',
+    name: 'FC-STACK-2026-0818-MOCK.csv',
     isDemo: true,
     rowCount: demo.rows.length,
   };
   state.reviews = {};
   runAndRender();
-  showToast('演示数据已载入：规则、证据和报告均可在页面中继续操作。');
+  showToast('Mock 数据已载入：规则、证据和报告均可在页面中继续操作。');
+}
+
+function downloadMockCsv() {
+  const demo = createDemoDataset();
+  const headers = [
+    'timestamp',
+    'current',
+    'h2_pressure',
+    'air_pressure',
+    'coolant_temp',
+    'stack_voltage',
+    ...demo.schema.cells.map((cell) => cell.header),
+  ];
+  const rows = demo.rows.map((row) => [
+    row.t,
+    row.current,
+    row.h2Pressure,
+    row.airPressure,
+    row.coolantTemp,
+    row.stackVoltage,
+    ...demo.schema.cells.map((cell) => row.cells[cell.key]),
+  ]);
+  const csv = [headers, ...rows]
+    .map((values) => values.map(csvValue).join(','))
+    .join('\r\n');
+
+  triggerDownload(
+    new Blob([csv], { type: 'text/csv;charset=utf-8' }),
+    'FC-STACK-2026-0818-MOCK.csv',
+  );
+  showToast('Mock CSV 已下载，可直接通过“导入 CSV”重新验证完整流程。');
 }
 
 async function handleCsvImport(event) {
@@ -518,7 +551,7 @@ function renderMethod() {
 function renderSource(analysis) {
   els.sourceName.textContent = state.source.name;
   const endLabel = formatElapsed(analysis.endTime - analysis.startTime);
-  const origin = state.source.isDemo ? '合成演示数据' : '浏览器本地处理';
+  const origin = state.source.isDemo ? '合成 Mock 数据' : '浏览器本地处理';
   els.sourceMeta.textContent = `${state.source.rowCount.toLocaleString('zh-CN')} points · 00:00–${endLabel} · ${origin}`;
   els.rerunButton.disabled = false;
 
@@ -597,7 +630,7 @@ function renderFindings(analysis) {
 
 function renderEvidence(analysis) {
   const mapping = analysis.schema.mapping;
-  const sourceType = state.source.isDemo ? '合成演示数据' : '用户导入 CSV';
+  const sourceType = state.source.isDemo ? '合成 Mock 数据' : '用户导入 CSV';
   const windowInfo = analysis.sampleRows.length
     ? `${formatRunRange(analysis.bestStable, analysis)} · ${formatDuration(analysis.sampleDuration)}`
     : '未生成可用统计窗口';
@@ -1005,16 +1038,22 @@ async function copyConclusion() {
 function exportReport() {
   if (!state.analysis) return;
   const documentText = buildReportDocument(state.analysis);
-  const blob = new Blob([documentText], { type: 'text/html;charset=utf-8' });
+  triggerDownload(
+    new Blob([documentText], { type: 'text/html;charset=utf-8' }),
+    `FuelCell-MethodOS-${safeFilename(state.source.name)}-report.html`,
+  );
+  showToast('HTML 报告已导出，包含 Method、证据和审核状态。');
+}
+
+function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = `FuelCell-MethodOS-${safeFilename(state.source.name)}-report.html`;
+  anchor.download = filename;
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 2000);
-  showToast('HTML 报告已导出，包含 Method、证据和审核状态。');
 }
 
 function buildReportDocument(analysis) {
@@ -1132,6 +1171,17 @@ function escapeHtml(value) {
 
 function safeFilename(value) {
   return String(value).replace(/[^a-zA-Z0-9\-_]+/g, '-').replace(/^-+|-+$/g, '') || 'analysis';
+}
+
+function csvValue(value) {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number' && !Number.isFinite(value)) return '';
+  const text = typeof value === 'number'
+    ? Number.isInteger(value)
+      ? String(value)
+      : value.toFixed(6)
+    : String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 function showToast(message, type = 'success') {
